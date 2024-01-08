@@ -45,8 +45,7 @@ func eventListen() {
 
 // Listens for commands on the socket and attempts to perform them
 func commandListen() {
-    // os.Mkdir("/tmp/hyprman/", fs.FileMode(os.O_RDWR))
-    socFile := "/tmp/hyprman/command.socket"
+    socFile := "/tmp/hyprman.socket"
 	sock, err := net.Listen("unix",socFile )
 	   if err != nil{
 	       log.Fatal("unable to start command socket", err)

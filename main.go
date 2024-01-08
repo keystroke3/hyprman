@@ -61,9 +61,8 @@ func main() {
 	var command string
 	daemonMode := flag.Bool("daemon", false, "Run daemon")
 	flag.BoolVar(daemonMode, "d", false, "Run daemon")
-	flag.StringVar(&command, "command", "", "Command to run")
+	flag.StringVar(&command, "command", "", fmt.Sprint(availableCmds()))
 	flag.Parse()
-	go eventListen()
 	if flag.NArg() > 0 {
 		command = flag.Arg(0)
 	}
@@ -73,9 +72,12 @@ func main() {
 		log.Fatal("failed open connection to hyprland", err)
 	}
 	defer ctrlSoc.Close()
-	_, err = ctrlSoc.Write([]byte(ctrlCommands["float"]))
+	_, err = ctrlSoc.Write([]byte(hyprctlCmds["float"]))
 	if err != nil {
 		log.Fatal("Fialed to get current active window", err)
 	}
-	commandListen()
+	if *daemonMode {
+		go eventListen()
+		commandListen()
+	}
 }
