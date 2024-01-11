@@ -53,7 +53,7 @@ func handleCommand(state StateManager, conn net.Conn) {
 	if len(rcmd) > 1 {
 		args = rcmd[1:]
 	}
-    fmt.Printf("Got '%v', expect 'fullscreen'\n", cmd)
+	fmt.Printf("Got '%v', expect 'fullscreen'\n", cmd)
 	fn, set := EnabledCmmands[cmd]
 	if !set {
 		fmt.Printf("Unable to find handler for command:'%v'\n", cmd)

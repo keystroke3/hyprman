@@ -34,7 +34,7 @@ func StateInit() *State {
 	if err != nil {
 		log.Fatal("unable to create new state", err)
 	}
-    fmt.Println(resp)
+	fmt.Println(resp)
 	return &State{
 		activeWindow: nil,
 		windows:      make(map[string]*Window),

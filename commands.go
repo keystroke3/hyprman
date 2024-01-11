@@ -55,7 +55,6 @@ func toggleFull(e Executor, w *Window, t string) {
 	w.Fullscreen = !w.Fullscreen
 }
 
-
 // Provides a way for command functions to access state
 type StateManager interface {
 	SetActive(addr string)
@@ -105,9 +104,9 @@ func ForceFullScreen(s StateManager, args ...string) {
 }
 
 func daemonConnect() net.Conn {
-    conn, err:=  net.Dial("unix", socFile) 
-    if err != nil{
-        log.Fatal("Unable to connect to daemon. Is hyprmand is it running?")
-    }
-    return conn
+	conn, err := net.Dial("unix", socFile)
+	if err != nil {
+		log.Fatal("Unable to connect to daemon. Is hyprmand is it running?")
+	}
+	return conn
 }
