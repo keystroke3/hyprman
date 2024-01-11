@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
-	// "io/fs"
 	"log"
 	"net"
 	"os"
@@ -12,9 +10,10 @@ import (
 	"syscall"
 )
 
-var state = State{windows: make(map[string]*Window)}
+var eventSocFile = fmt.Sprintf("/tmp/hypr/%v/.socket2.sock", his)
+var socFile = "/tmp/hyprman.socket"
 
-func eventListen() {
+func eventListen(state *State) {
 	eventSoc, err := net.Dial("unix", eventSocFile)
 	if err != nil {
 		log.Fatal("failed open connection to hyprland", err)
@@ -24,6 +23,7 @@ func eventListen() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
+		os.Remove(socFile)
 		os.Exit(1)
 	}()
 
@@ -34,43 +34,51 @@ func eventListen() {
 			log.Fatal("Unabel to read socket", err)
 			break
 		}
-        m := string(buf)
-		msg := strings.Split(m, ">>")
-		if msg[0] == "activewindow" {
-			state.SetActive(msg[1])
-		}
-		fmt.Println("message from hyprland", m)
+		m := string(buf)
+		strings.Split(m, ">>")
 	}
 }
 
-// Listens for commands on the socket and attempts to perform them
-func commandListen() {
-    socFile := "/tmp/hyprman.socket"
-	sock, err := net.Listen("unix",socFile )
-	   if err != nil{
-	       log.Fatal("unable to start command socket", err)
+func handleCommand(state StateManager, conn net.Conn) {
+	defer conn.Close()
+	buf := make([]byte, 100)
+	_, err := conn.Read(buf)
+	if err != nil && err.Error() != "EOF" {
+		log.Fatal("Unable to read from socket connection ", err)
+		return
 	}
-    defer func(){
-        os.Remove(socFile)
-        sock.Close()
-    }()
-	command := Router{
-		state: &state,
-		cmds:  make(map[string]func(StateManager, io.Writer, ...string)),
+	rcmd := strings.Split(string(buf), " ")
+	cmd := rcmd[0]
+	args := []string{}
+	if len(rcmd) > 1 {
+		args = rcmd[1:]
 	}
-	command.Register("minimize", Minimize)
-	command.Register("restore", Restore)
-    for {
-        conn, err := sock.Accept()
-        if err != nil{
-            log.Fatal("Unable to make socket connection", err)
-        }
-        defer conn.Close()
-        buf := make([]byte, 1024)
-        _, err = conn.Read(buf)
-        if err != nil{
-            log.Fatal("Unable to read from socket connection", err)
-        }
-        fmt.Printf("buf: %v\n", buf)
-    }
+    fmt.Printf("Got '%v', expect 'fullscreen'\n", cmd)
+	fn, set := EnabledCmmands[cmd]
+	if !set {
+		fmt.Printf("Unable to find handler for command:'%v'\n", cmd)
+		return
+	}
+	fn(state, args...)
+	fmt.Printf("buf: %v\n", rcmd)
+}
+
+// Listens for commands on the socket and attempts to execute them
+func commandListen(state *State) {
+	socFile := "/tmp/hyprman.socket"
+	sock, err := net.Listen("unix", socFile)
+	if err != nil {
+		log.Fatal("unable to start command socket", err)
+	}
+	defer func() {
+		sock.Close()
+		os.Remove(socFile)
+	}()
+	for {
+		conn, err := sock.Accept()
+		if err != nil && err.Error() != "EOF" {
+			log.Fatal("Unable to read from socket connection ", err)
+		}
+		go handleCommand(state, conn)
+	}
 }

@@ -1,12 +1,51 @@
 package main
 
 import (
+	"fmt"
+	"log"
 	"strings"
 )
+
+type Window struct {
+	Address        string
+	Mapped         bool
+	Hidden         bool
+	At             [2]int
+	Size           [2]int
+	Workspace      int
+	Floating       bool
+	Monitor        int
+	Class          string
+	Title          string
+	InitialClass   string
+	InitialTitle   string
+	Pid            int
+	Xwayland       bool
+	Pinned         bool
+	Fullscreen     bool
+	FullscreenMode int
+	FakeFullscreen bool
+	Minimzied      bool
+}
+
+func StateInit() *State {
+	client := NewClient()
+	resp, err := client.Exec("dispatch activewindow")
+	if err != nil {
+		log.Fatal("unable to create new state", err)
+	}
+    fmt.Println(resp)
+	return &State{
+		activeWindow: nil,
+		windows:      make(map[string]*Window),
+		client:       client,
+	}
+}
 
 type State struct {
 	activeWindow *Window
 	windows      map[string]*Window
+	client       *Client
 }
 
 func (s *State) ActiveWindow() *Window {
@@ -14,6 +53,10 @@ func (s *State) ActiveWindow() *Window {
 }
 
 func (s *State) SetActive(addr string) {}
+
+func (s *State) Client() *Client {
+	return s.client
+}
 
 // Filters windows in `State` that have value `v` in field `f`
 func (s *State) Filter(f string, v any) map[string]*Window {
