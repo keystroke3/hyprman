@@ -1,31 +1,38 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os/exec"
 	"strings"
 )
 
+type Workspace struct {
+	Id   int
+	Name string
+}
+
 type Window struct {
-	Address        string
-	Mapped         bool
-	Hidden         bool
-	At             [2]int
-	Size           [2]int
-	Workspace      int
-	Floating       bool
-	Monitor        int
-	Class          string
-	Title          string
-	InitialClass   string
-	InitialTitle   string
-	Pid            int
-	Xwayland       bool
-	Pinned         bool
-	Fullscreen     bool
-	FullscreenMode int
-	FakeFullscreen bool
-	Minimzied      bool
+	Address        string    `json:"address"`
+	Mapped         bool      `json:"mapped"`
+	Hidden         bool      `json:"hidden"`
+	At             [2]int    `json:"at"`
+	Size           [2]int    `json:"size"`
+	Workspace      Workspace `json:"workspace"`
+	Floating       bool      `json:"floating"`
+	Monitor        int       `json:"monitor"`
+	Class          string    `json:"class"`
+	Title          string    `json:"title"`
+	InitialClass   string    `json:"initial_class"`
+	InitialTitle   string    `json:"initial_title"`
+	Pid            int       `json:"pid"`
+	Xwayland       bool      `json:"xwayland"`
+	Pinned         bool      `json:"pinned"`
+	Fullscreen     bool      `json:"fullscreen"`
+	FullscreenMode int       `json:"fullscreen_mode"`
+	FakeFullscreen bool      `json:"fake_fullscreen"`
+	Minimzied      bool      `json:"minimzied"`
 }
 
 func StateInit() *State {
@@ -35,11 +42,14 @@ func StateInit() *State {
 		log.Fatal("unable to create new state", err)
 	}
 	fmt.Println(resp)
-	return &State{
+	state := &State{
 		activeWindow: nil,
 		windows:      make(map[string]*Window),
 		client:       client,
 	}
+	state.SetActive()
+	return state
+
 }
 
 type State struct {
@@ -52,7 +62,29 @@ func (s *State) ActiveWindow() *Window {
 	return s.activeWindow
 }
 
-func (s *State) SetActive(addr string) {}
+func (s *State) SetActive(addr ...string) {
+	var w Window
+	var a string
+	if len(addr) > 0 {
+		a = addr[0]
+	}
+	win, set := s.windows[a]
+	if set {
+		s.activeWindow = win
+		return
+	}
+	wJson, err := exec.Command("hyprctl", "activewindow", "-j").Output()
+	if err != nil {
+		log.Println("unable to query active window")
+	}
+	err = json.Unmarshal(wJson, &w)
+	if err != nil {
+		log.Println("unable to unmarshal command output:", err)
+	}
+
+	s.AddWindow(&w)
+	log.Println("Set active window to", w.Address)
+}
 
 func (s *State) Client() *Client {
 	return s.client
@@ -84,7 +116,7 @@ func (s *State) Filter(f string, v any) map[string]*Window {
 				windows[k] = w
 			}
 		case "workspace":
-			if w.Workspace == v {
+			if w.Workspace.Id == v {
 				windows[k] = w
 			}
 		case "floating":

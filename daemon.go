@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
@@ -12,6 +13,37 @@ import (
 
 var eventSocFile = fmt.Sprintf("/tmp/hypr/%v/.socket2.sock", his)
 var socFile = "/tmp/hyprman.socket"
+
+// Attempts to check if there is another instance of the daemon running
+// by connecting to it. Successful connection means there's a conflict
+// and an error is returned. If the connection was unsuccessful, but the `socFile`
+// exists, then it is assumed that the previous instance errored out, and the
+// socFile is removed.
+func conflictCheck(f string) (confict bool) {
+	_, err := os.Stat(f)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return
+		}
+		log.Fatal("error performing sockfile lookup: ", err)
+	}
+    conn, err := net.Dial("unix", f)
+	if err != nil {
+		os.Remove(f)
+		return
+	}
+    conn.Write([]byte("ping"))
+	fmt.Println("hyprman daemon is already running")
+	os.Exit(1)
+	return true
+}
+
+
+func handleEvent(s StateManager, msg string){
+    if strings.Contains(msg, "activewindow"){
+        s.SetActive() 
+    }
+}
 
 func eventListen(state *State) {
 	eventSoc, err := net.Dial("unix", eventSocFile)
@@ -31,12 +63,23 @@ func eventListen(state *State) {
 		buf := make([]byte, 1024)
 		_, err := eventSoc.Read(buf)
 		if err != nil {
-			log.Fatal("Unabel to read socket", err)
+			log.Fatal("Unable to read socket", err)
 			break
 		}
 		m := string(buf)
-		strings.Split(m, ">>")
+        handleEvent(state, m)
+        // msg := strings.Split(m, ">>")
+        fmt.Println("\nEvent:", m)
+
 	}
+}
+
+func foo() {
+	fmt.Println("called foo")
+}
+
+var simpleCommands = map[string]func(){
+	"fullscreen": foo,
 }
 
 func handleCommand(state StateManager, conn net.Conn) {
@@ -48,19 +91,22 @@ func handleCommand(state StateManager, conn net.Conn) {
 		return
 	}
 	rcmd := strings.Split(string(buf), " ")
-	cmd := rcmd[0]
 	args := []string{}
+	cmd := rcmd[0]
 	if len(rcmd) > 1 {
 		args = rcmd[1:]
 	}
-	fmt.Printf("Got '%v', expect 'fullscreen'\n", cmd)
+	cmd = string(bytes.Trim([]byte(cmd), "\x00"))
+	if cmd == "ping" {
+		conn.Write([]byte("pong"))
+        return
+	}
 	fn, set := EnabledCmmands[cmd]
 	if !set {
 		fmt.Printf("Unable to find handler for command:'%v'\n", cmd)
 		return
 	}
 	fn(state, args...)
-	fmt.Printf("buf: %v\n", rcmd)
 }
 
 // Listens for commands on the socket and attempts to execute them

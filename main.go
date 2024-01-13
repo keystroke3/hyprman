@@ -18,19 +18,19 @@ func main() {
 	if flag.NArg() > 0 {
 		command = flag.Arg(0)
 	}
-	if *daemonMode {
-		state := State{windows: make(map[string]*Window)}
-		go eventListen(&state)
-		commandListen(&state)
-		return
-	}
 	if command == "" {
-		flag.Usage()
-		os.Exit(1)
+        *daemonMode = true
+	}
+	if *daemonMode {
+        conflictCheck(socFile)
+		state := StateInit()
+		go eventListen(state)
+		commandListen(state)
+		return
 	}
 	_, set := EnabledCmmands[command]
 	if !set {
-		fmt.Println("unkown command ", command)
+		fmt.Println("unkown command", command)
 		flag.Usage()
 		os.Exit(1)
 	}
