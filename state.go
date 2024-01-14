@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -33,34 +32,48 @@ type Window struct {
 	FullscreenMode int       `json:"fullscreen_mode"`
 	FakeFullscreen bool      `json:"fake_fullscreen"`
 	Minimzied      bool      `json:"minimzied"`
+	PreviouslyPinned bool
 }
 
 func StateInit() *State {
-	client := NewClient()
-	resp, err := client.Exec("dispatch activewindow")
+	// client := NewClient()
+	client := &Shell{}
+	_, err := client.Exec("hyprctl activewindow")
 	if err != nil {
-		log.Fatal("unable to create new state", err)
+		log.Fatal("unable to create new state: ", err)
 	}
-	fmt.Println(resp)
 	state := &State{
 		activeWindow: nil,
 		windows:      make(map[string]*Window),
 		client:       client,
+		pinned:      make(map[string]bool),
 	}
 	state.SetActive()
 	return state
-
 }
 
 type State struct {
 	activeWindow *Window
 	windows      map[string]*Window
-	client       *Client
+	client       Executor
+	pinned       map[string]bool
 }
 
 func (s *State) ActiveWindow() *Window {
 	return s.activeWindow
 }
+
+func (s *State) SavePinned(addr string){
+    s.pinned[addr] = true
+}
+
+func (s *State) RemovePinned(addr string){
+    delete(s.pinned, addr)
+}
+func (s *State) IsPinned(addr string) bool {
+    return s.pinned[addr]
+}
+
 
 func (s *State) SetActive(addr ...string) {
 	var w Window
@@ -76,17 +89,19 @@ func (s *State) SetActive(addr ...string) {
 	wJson, err := exec.Command("hyprctl", "activewindow", "-j").Output()
 	if err != nil {
 		log.Println("unable to query active window")
+		return
 	}
 	err = json.Unmarshal(wJson, &w)
 	if err != nil {
 		log.Println("unable to unmarshal command output:", err)
 	}
-
+	_, set = s.windows[a]
 	s.AddWindow(&w)
-	log.Println("Set active window to", w.Address)
+	s.activeWindow = &w
+	log.Println("Set active window to", s.activeWindow.Address)
 }
 
-func (s *State) Client() *Client {
+func (s *State) Client() Executor {
 	return s.client
 }
 

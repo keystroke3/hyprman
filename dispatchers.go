@@ -6,16 +6,21 @@ import (
 	"io"
 	"log"
 	"net"
+	"os/exec"
+	"strings"
 )
 
 var ctrlSocFile = fmt.Sprintf("/tmp/hypr/%v/.socket.sock", his)
+
+type Executor interface {
+	Exec(string) (string, error)
+}
 
 func NewClient() *Client {
 	conn, err := net.Dial("unix", ctrlSocFile)
 	if err != nil {
 		log.Fatal("Unable to connect to control socket ", err)
 	}
-	// conn, err := listener.Accept()
 	if err != nil {
 		log.Fatal("Unable to accept control socket packets ", err)
 	}
@@ -57,4 +62,17 @@ func (c *Client) Write(s string) (resp string, err error) {
 
 func (c *Client) Exec(s string) (resp string, err error) {
 	return c.Write(s)
+}
+
+type Shell struct{}
+
+func (s *Shell) Exec(c string) (string, error) {
+	args := []string{}
+	input := strings.Split(c, " ")
+	cmd := input[0]
+	if len(input) > 1 {
+		args = input[1:]
+	}
+	out, err := exec.Command(cmd, args...).Output()
+	return string(out), err
 }

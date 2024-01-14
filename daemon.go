@@ -40,7 +40,7 @@ func conflictCheck(f string) (confict bool) {
 
 
 func handleEvent(s StateManager, msg string){
-    if strings.Contains(msg, "activewindow"){
+    if strings.Contains(msg, "activewindowv2"){
         s.SetActive() 
     }
 }
@@ -69,7 +69,6 @@ func eventListen(state *State) {
 		m := string(buf)
         handleEvent(state, m)
         // msg := strings.Split(m, ">>")
-        fmt.Println("\nEvent:", m)
 
 	}
 }
