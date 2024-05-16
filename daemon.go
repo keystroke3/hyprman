@@ -11,7 +11,7 @@ import (
 	"syscall"
 )
 
-var eventSocFile = fmt.Sprintf("/tmp/hypr/%v/.socket2.sock", his)
+var eventSocFile = fmt.Sprintf("%v/hypr/%v/.socket2.sock", os.Getenv("XDG_RUNTIME_DIR"), his)
 var socFile = "/tmp/hyprman.socket"
 
 // Attempts to check if there is another instance of the daemon running

@@ -7,7 +7,15 @@ import (
 	"os"
 )
 
-var his, _ = os.LookupEnv("HYPRLAND_INSTANCE_SIGNATURE")
+func getHis() string {
+	p := os.Getenv("HYPRLAND_INSTANCE_SIGNATURE")
+	if p == "" {
+		log.Fatal("unable to find hyprland instance signature")
+	}
+	return p
+}
+
+var his = getHis()
 
 func main() {
 	var command string
@@ -19,10 +27,10 @@ func main() {
 		command = flag.Arg(0)
 	}
 	if command == "" {
-        *daemonMode = true
+		*daemonMode = true
 	}
 	if *daemonMode {
-        conflictCheck(socFile)
+		conflictCheck(socFile)
 		state := StateInit()
 		go eventListen(state)
 		commandListen(state)

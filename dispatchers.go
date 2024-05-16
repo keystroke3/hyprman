@@ -6,11 +6,12 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"strings"
 )
 
-var ctrlSocFile = fmt.Sprintf("/tmp/hypr/%v/.socket.sock", his)
+var ctrlSocFile = fmt.Sprintf("%v/hypr/%v/.socket.sock", os.Getenv("XDG_RUNTIME_DIR"), his)
 
 type Executor interface {
 	Exec(string) (string, error)
